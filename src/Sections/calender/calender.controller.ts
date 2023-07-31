@@ -19,6 +19,7 @@ import { AuthGuard } from 'src/guard/auth.guard';
 import { CalenderService } from './calender.service';
 import { CalenderRequestDto } from './dto/request.dto';
 import { CalenderResponseDto } from './dto/response.dto';
+import { DataSource } from 'typeorm';
 
 @ApiTags('calender')
 @ApiBearerAuth('Authorization')
@@ -26,7 +27,10 @@ import { CalenderResponseDto } from './dto/response.dto';
 @Controller('calender')
 @UseGuards(AuthGuard)
 export class CalenderController {
-  constructor(private readonly calenderService: CalenderService) {}
+  constructor(
+    private readonly calenderService: CalenderService,
+    private readonly dataSource: DataSource,
+  ) {}
 
   @Post()
   async create(
@@ -34,16 +38,20 @@ export class CalenderController {
     @Body() createCalenderDto: CalenderRequestDto,
     @LoggedInUser() user,
   ): Promise<CalenderResponseDto> {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.startTransaction();
     try {
       const data = await this.calenderService.createOrUpdate(
         createCalenderDto,
         user,
       );
       if (data) {
+        await queryRunner.commitTransaction();
         response.status(PostgreStatusCode.SuccessCode).send(data);
         return data;
       }
     } catch (err) {
+      await queryRunner.rollbackTransaction();
       response
         .status(PostgreStatusCode.AuthorizationError)
         .send({ error: true, message: err });

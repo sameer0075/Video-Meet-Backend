@@ -2,7 +2,6 @@ import { MailerService } from '@nestjs-modules/mailer';
 import { CACHE_MANAGER, Inject, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Cache } from 'cache-manager';
-import { userInfo } from 'os';
 import { BaseService } from 'src/common/services/base.service';
 import { Calender } from 'src/entities/calender.entity';
 import { Repository } from 'typeorm';
