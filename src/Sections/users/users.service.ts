@@ -49,7 +49,7 @@ export class UsersService {
       throw 'User with this email already exists.';
     } else {
       const otp = uid();
-      Object.assign(body, { otp, is_active: 0 });
+      Object.assign(body, { otp, is_active: 1 });
       const content = emailContent(body);
       const payload = this.userRepository.create(body);
       const data: User = await this.userRep.save(payload);
@@ -108,7 +108,26 @@ export class UsersService {
       }
     } else {
       if (data && !data.is_active) {
-        throw 'Your account isnt activated! Please activate your account';
+        const otp = uid();
+        const emailData: UserRequestDto = {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          password: data.password,
+        };
+        Object.assign(emailData, { otp, is_active: data.is_active });
+        await this.userRep.update(data.id, { otp });
+        const content = emailContent(emailData);
+        emailService(
+          this.mailService,
+          emailData.email,
+          content,
+          'Email Verification ✔',
+        );
+        throw {
+          otpVerification: 'required',
+          message: 'Your account isnt activated! Please activate your account',
+        };
       } else {
         throw 'Invalid Credentials! User not found.';
       }
