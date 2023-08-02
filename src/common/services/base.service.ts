@@ -37,9 +37,9 @@ export class BaseService<T> {
     let savedData = [];
     if (cacheData) {
       savedData = JSON.parse(cacheData);
-      savedData.push(data);
+      savedData.push({ ...data });
     } else {
-      savedData.push(data);
+      savedData.push({ ...data });
     }
     await this.client.set(cacheKey, JSON.stringify(savedData), 0);
     return data;

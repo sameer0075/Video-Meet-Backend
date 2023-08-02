@@ -56,3 +56,30 @@ export function emailContent(data) {
 
   return content;
 }
+
+export function eventContent(data) {
+  const today = `${new Date().getFullYear()}-${
+    new Date().getMonth() + 1
+  }-${new Date().getDate()}`;
+
+  const reminderDate = `${new Date(data.reminder_date).getFullYear()}-${
+    new Date().getMonth() + 1
+  }-${new Date().getDate()}`;
+
+  return `<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notification Reminder</title>
+  </head>
+  <body>
+    <div style="background-color:#f2f2f2; padding:20px;">
+      <h1 style="text-align:center;">Greetings ${data.name}</h1>
+      <p style="font-size:16px; text-align:center;">Here is your ${data.title} reminder set for ${reminderDate}</p>
+      <p style="font-size:16px; text-align:center;">${data.description}</p>
+      <hr style="border:0; border-top:1px solid #ccc;">
+      <p style="font-size:14px; text-align:center; color:#999;">${today}</p>
+    </div>
+  </body>
+</html>`;
+}

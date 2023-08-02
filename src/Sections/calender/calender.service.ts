@@ -8,8 +8,9 @@ import { Repository } from 'typeorm';
 import { CalenderRequestDto } from './dto/request.dto';
 import { CalenderResponseDto } from './dto/response.dto';
 import { CronJob } from 'cron';
-import moment from 'moment';
 import DateEnums from 'src/enums/DateEnums';
+import { eventContent } from 'src/common/templates/html-content';
+import { emailService } from 'src/common/utils/email-service';
 @Injectable()
 export class CalenderService {
   private calenderRep: BaseService<Calender>;
@@ -17,6 +18,7 @@ export class CalenderService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectRepository(Calender)
     private calenderRepository: Repository<Calender>,
+    private mailService: MailerService,
   ) {
     this.calenderRep = new BaseService<Calender>(
       this.calenderRepository,
@@ -37,14 +39,47 @@ export class CalenderService {
       notification_alert_time,
       ...rest
     } = createCalenderDto;
+    if (createCalenderDto.instant) {
+      const payload = this.calenderRepository.create({
+        ...rest,
+        custom_date,
+        notification_alert_type,
+        notification_alert_time,
+      });
+      const data = id
+        ? await this.calenderRep.update(id, payload)
+        : await this.calenderRep.save(payload);
+
+      const { title, description, instant, cancelled } = createCalenderDto;
+      return new CalenderResponseDto(
+        id || data.id,
+        title,
+        description,
+        custom_date,
+        instant,
+        notification_alert_type,
+        notification_alert_time,
+        cancelled,
+      );
+    }
     const type =
       notification_alert_type === DateEnums.DAYS
         ? DateEnums.DAYS
         : notification_alert_type == DateEnums.MONTHS
         ? DateEnums.MONTHS
         : DateEnums.MINUTES;
-    const date = moment(custom_date).subtract(notification_alert_time, type);
+    // const date = moment(custom_date).subtract(notification_alert_time, type);
 
+    const date = new Date(custom_date);
+
+    if (type === DateEnums.DAYS) {
+      date.setDate(date.getDate() - notification_alert_time);
+    } else if (type === DateEnums.MONTHS) {
+      date.setMonth(date.getMonth() - notification_alert_time);
+    } else {
+      date.setMinutes(date.getMinutes() - notification_alert_time);
+    }
+    console.log('date', date);
     const payload = this.calenderRepository.create({
       ...rest,
       custom_date,
@@ -59,7 +94,12 @@ export class CalenderService {
     const reminderCronJob = new CronJob(
       date,
       () =>
-        this.remindUser(id || data.id, reminderCronJob, reminderCronJobName),
+        this.remindUser(
+          id || data.id,
+          reminderCronJob,
+          reminderCronJobName,
+          user,
+        ),
       null,
       true,
     );
@@ -69,7 +109,7 @@ export class CalenderService {
       cron_job: reminderCronJobName,
     });
 
-    const { title, description, instant, cancelled } = data;
+    const { title, description, instant, cancelled } = createCalenderDto;
     return new CalenderResponseDto(
       id || data.id,
       title,
@@ -144,6 +184,7 @@ export class CalenderService {
     reminderId: number,
     reminderCronJob: CronJob,
     reminderCronJobName: string,
+    user,
   ) {
     console.log(`Reminder ${reminderId} triggered!`);
     // Update the reminder record in the database
@@ -152,6 +193,15 @@ export class CalenderService {
       await this.updateCronJob(reminderId, {
         cron_job: null,
       });
+      const content = eventContent({
+        mailService: this.mailService,
+        email: user.email,
+        name: user.name,
+        title: reminder.title,
+        description: reminder.description,
+        reminder_date: reminder.custom_date,
+      });
+      emailService(this.mailService, user.email, content, 'Event Reminder ✔');
     }
     // Delete the cron job
     reminderCronJob.stop();

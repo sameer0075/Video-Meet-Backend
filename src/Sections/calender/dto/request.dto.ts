@@ -39,12 +39,12 @@ export class CalenderRequestDto {
   instant: boolean;
 
   @ApiProperty({
-    type: Date,
+    type: String,
     required: false,
     description: 'This is a optional property',
   })
   @IsOptional()
-  @IsDate()
+  @IsString()
   custom_date: Date;
 
   @ApiProperty({
